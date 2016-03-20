@@ -6,10 +6,12 @@ output: html_document
 ---
 
 ```{r}
+library("knitr")
 library("dplyr")
 library("tidyr")
 library("R.utils")
-library("knitr")
+library("stringi")
+library("ggplot2")
 
 corpus_path <- function(name, lang) {
     stopifnot(name %in% c("blogs", "news", "twitter"))
@@ -26,9 +28,14 @@ corpus_path <- function(name, lang) {
 
 ## Introduction
 
+```{r}
+lang <- "en_US"
+corpus_names <- c("blogs", "news", "twitter")
+```
+
 ## Basic Statistics
 
-```{r echo=FALSE}
+```{r echo = FALSE}
 format_size <- function(file_path) {
     size_in_bytes <- file.size(file_path)
     size_in_mb <- size_in_bytes / 10 ^ 6
@@ -40,25 +47,34 @@ format_lines <- function(file_path) {
     prettyNum(lines, big.mark = ",")
 }
 
-corpus_stats <- function(corpus_name) {
+corpus_results <- function(corpus_name) {
     list(corpus = rep(corpus_name, 2),
          name = c("size", "lines"),
-         value = c(format_size(corpus_path(corpus_name, "en_US")),
-                   format_lines(corpus_path(corpus_name, "en_US"))))
+         value = c(format_size(corpus_path(corpus_name, lang)),
+                   format_lines(corpus_path(corpus_name, lang))))
 }
 
-corpora_stats <- lapply(c("blogs", "news", "twitter"), corpus_stats)
-basic_stats <- do.call(rbind, lapply(corpora_stats, as_data_frame))
-
+basic_stats <- do.call(rbind, lapply(lapply(corpus_names, corpus_results), as_data_frame))
 kable(basic_stats %>%
     spread(name, value) %>%
     select(Corpus = corpus,
-           `File size (mb)` = size,
-           `Number of lines` = lines))
+           `File Size (mb)` = size,
+           `Number of Lines` = lines))
 ```
 
-```{r}
+```{r echo = FALSE}
+corpus_results <- function(corpus_name) {
+    lines <- readLines(corpus_path(corpus_name, lang), encoding = "UTF-8")
+    word_count <- stri_count_words(lines)
+    word_count_summary <- summary(word_count)
 
+    results <- list(Corpus = corpus_name)
+    results <- c(results, lapply(word_count_summary, function(x) x))
+    results
+}
+
+words_per_line <- do.call(rbind, lapply(lapply(corpus_names, corpus_results), as_data_frame))
+kable(words_per_line)
 ```
 
 ## N-Gram Frequency
