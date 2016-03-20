@@ -1,0 +1,66 @@
+---
+title: "Milestone Report"
+author: "Yasser Gonzalez"
+date: "March 20, 2016"
+output: html_document
+---
+
+```{r}
+library("dplyr")
+library("tidyr")
+library("R.utils")
+library("knitr")
+
+corpus_path <- function(name, lang) {
+    stopifnot(name %in% c("blogs", "news", "twitter"))
+    stopifnot(lang %in% c("de_DE", "en_US", "fi_FI", "ru_RU"))
+    
+    data_dir <- "../data"
+    lang_dir <- file.path(data_dir, lang)
+    text_name <- paste0(lang, ".", name, ".txt")
+    text_path <- file.path(lang_dir, text_name)
+
+    text_path
+}
+```
+
+## Introduction
+
+## Basic Statistics
+
+```{r echo=FALSE}
+format_size <- function(file_path) {
+    size_in_bytes <- file.size(file_path)
+    size_in_mb <- size_in_bytes / 10 ^ 6
+    formatC(size_in_mb, format = "f", digits = 2, big.mark = ",")
+}
+
+format_lines <- function(file_path) {
+    lines <- countLines(file_path)
+    prettyNum(lines, big.mark = ",")
+}
+
+corpus_stats <- function(corpus_name) {
+    list(corpus = rep(corpus_name, 2),
+         name = c("size", "lines"),
+         value = c(format_size(corpus_path(corpus_name, "en_US")),
+                   format_lines(corpus_path(corpus_name, "en_US"))))
+}
+
+corpora_stats <- lapply(c("blogs", "news", "twitter"), corpus_stats)
+basic_stats <- do.call(rbind, lapply(corpora_stats, as_data_frame))
+
+kable(basic_stats %>%
+    spread(name, value) %>%
+    select(Corpus = corpus,
+           `File size (mb)` = size,
+           `Number of lines` = lines))
+```
+
+```{r}
+
+```
+
+## N-Gram Frequency
+
+## Conclusions & Outlook
