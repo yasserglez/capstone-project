@@ -16,6 +16,8 @@ library("stringi")
 library("ggplot2")
 library("RWeka")
 
+set.seed(12345)
+
 corpus_path <- function(name, lang) {
     stopifnot(name %in% c("blogs", "news", "twitter"))
     stopifnot(lang %in% c("de_DE", "en_US", "fi_FI", "ru_RU"))
@@ -105,7 +107,7 @@ kable(words_per_line)
 This section illustrates the frequency of 1-grams, 2-grams and 3-grams in the
 documents. Each plot presents the 10 most frequent $n$-grams for each
 type of document along with their frequencies. The frequencies were
-estimated from a random sample containing 5% of the lines in each file.
+estimated from a random sample with 1% of the lines in each file.
 
 ```{r ngram_data, cache = TRUE, include = FALSE}
 top10_ngrams <- function(corpus_name, ngram_size, sample_rate) {
@@ -130,7 +132,7 @@ top10_ngrams <- function(corpus_name, ngram_size, sample_rate) {
 ngram_data <- NULL
 for (ngram_size in c(1, 2, 3)) {
     for (corpus_name in corpus_names) {
-        corpus_data <- top10_ngrams(corpus_name, ngram_size, 0.001)
+        corpus_data <- top10_ngrams(corpus_name, ngram_size, 0.01)
         corpus_data$ngram_size <- ngram_size
         corpus_data$corpus_name <- corpus_name
         ngram_data <- rbind(ngram_data, corpus_data)
