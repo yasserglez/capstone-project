@@ -2,16 +2,19 @@
 title: "Milestone Report"
 author: "Yasser Gonzalez"
 date: "March 20, 2016"
-output: html_document
+output:
+  html_document:
+    keep_md: true
 ---
 
-```{r}
+```{r include = FALSE}
 library("knitr")
 library("dplyr")
 library("tidyr")
 library("R.utils")
 library("stringi")
 library("ggplot2")
+library("RWeka")
 
 corpus_path <- function(name, lang) {
     stopifnot(name %in% c("blogs", "news", "twitter"))
@@ -28,14 +31,14 @@ corpus_path <- function(name, lang) {
 
 ## Introduction
 
-```{r}
+```{r include = FALSE}
 lang <- "en_US"
 corpus_names <- c("blogs", "news", "twitter")
 ```
 
 ## Basic Statistics
 
-```{r echo = FALSE}
+```{r basic_stats, include = FALSE, warning = FALSE, cache = TRUE}
 format_size <- function(file_path) {
     size_in_bytes <- file.size(file_path)
     size_in_mb <- size_in_bytes / 10 ^ 6
@@ -55,6 +58,9 @@ corpus_results <- function(corpus_name) {
 }
 
 basic_stats <- do.call(rbind, lapply(lapply(corpus_names, corpus_results), as_data_frame))
+```
+
+```{r echo = FALSE}
 kable(basic_stats %>%
     spread(name, value) %>%
     select(Corpus = corpus,
@@ -62,7 +68,7 @@ kable(basic_stats %>%
            `Number of Lines` = lines))
 ```
 
-```{r echo = FALSE}
+```{r words_per_line, include = FALSE, cache = TRUE}
 corpus_results <- function(corpus_name) {
     lines <- readLines(corpus_path(corpus_name, lang), encoding = "UTF-8")
     word_count <- stri_count_words(lines)
@@ -74,9 +80,67 @@ corpus_results <- function(corpus_name) {
 }
 
 words_per_line <- do.call(rbind, lapply(lapply(corpus_names, corpus_results), as_data_frame))
+```
+
+```{r echo = FALSE}
 kable(words_per_line)
 ```
 
 ## N-Gram Frequency
+
+```{r ngram_data, cache = TRUE, include = FALSE}
+top10_ngrams <- function(corpus_name, ngram_size, sample_rate) {
+    lines <- readLines(corpus_path(corpus_name, lang), encoding = "UTF-8")
+    lines <- sample(lines, round(sample_rate * length(lines)))
+    lines <- stri_replace_all(lines, " ", regex = "[^a-zA-Z’']")
+    lines <- stri_replace_all(lines, "'", fixed = "’")
+    lines <- stri_replace_all(lines, " ", regex = "\\s+")
+    lines <- stri_trans_tolower(lines)
+
+    control <- Weka_control(min = ngram_size, max = ngram_size, delimiters = " ")
+    ngrams <- data.frame(table(NGramTokenizer(lines, control)))
+    names(ngrams) <- c("ngram", "freq")
+
+    top10_ngrams <- ngrams %>% 
+        mutate(freq = 100 * freq / sum(freq)) %>%
+        top_n(10, freq)
+
+    top10_ngrams
+}
+
+ngram_data <- NULL
+for (ngram_size in c(1, 2, 3)) {
+    for (corpus_name in corpus_names) {
+        corpus_data <- top10_ngrams(corpus_name, ngram_size, 0.001)
+        corpus_data$ngram_size <- ngram_size
+        corpus_data$corpus_name <- corpus_name
+        ngram_data <- rbind(ngram_data, corpus_data)
+    }
+}
+```
+
+```{r include = FALSE}
+plot_ngram_data <- function(n) {
+    ggplot(filter(ngram_data, ngram_size == n),
+           aes(x = reorder(ngram, freq), y = freq)) +
+        facet_grid(~ corpus_name, scales = "free_y") +
+        geom_bar(stat = "identity") +
+        coord_flip() +
+        ylab("Frequency (%)") +
+        xlab(sprintf("%d-Gram", n))
+}
+```
+
+```{r top10_1grams, echo = FALSE, fig.path = "figures/"}
+plot_ngram_data(1)
+```
+
+```{r top10_2grams, echo = FALSE, fig.path = "figures/"}
+plot_ngram_data(2)
+```
+
+```{r top10_3grams, echo = FALSE, fig.path = "figures/"}
+plot_ngram_data(3)
+```
 
 ## Conclusions & Outlook
