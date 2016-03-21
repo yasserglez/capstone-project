@@ -19,7 +19,7 @@ library("RWeka")
 corpus_path <- function(name, lang) {
     stopifnot(name %in% c("blogs", "news", "twitter"))
     stopifnot(lang %in% c("de_DE", "en_US", "fi_FI", "ru_RU"))
-    
+
     data_dir <- "../data"
     lang_dir <- file.path(data_dir, lang)
     text_name <- paste0(lang, ".", name, ".txt")
@@ -31,12 +31,23 @@ corpus_path <- function(name, lang) {
 
 ## Introduction
 
+This report presents an exploratory data analysis of the English documents
+that will be used to train a model for predicting the next word in a given
+sequence of words. The documents are part of a larger corpus  called
+[HC Corpora](http://www.corpora.heliohost.org) and were collected from
+blogs, news and Twitter.
+
 ```{r include = FALSE}
 lang <- "en_US"
 corpus_names <- c("blogs", "news", "twitter")
 ```
 
 ## Basic Statistics
+
+This section presents some basic statistics about the training documents.
+
+The table below reports the size of the files containing the documents
+and the number of lines.
 
 ```{r basic_stats, include = FALSE, warning = FALSE, cache = TRUE}
 format_size <- function(file_path) {
@@ -68,6 +79,9 @@ kable(basic_stats %>%
            `Number of Lines` = lines))
 ```
 
+The following table summarizes the distribution of the number of words
+per line in each file.
+
 ```{r words_per_line, include = FALSE, cache = TRUE}
 corpus_results <- function(corpus_name) {
     lines <- readLines(corpus_path(corpus_name, lang), encoding = "UTF-8")
@@ -88,6 +102,11 @@ kable(words_per_line)
 
 ## N-Gram Frequency
 
+This section illustrates the frequency of 1-grams, 2-grams and 3-grams in the
+documents. Each plot presents the 10 most frequent $n$-grams for each
+type of document along with their frequencies. The frequencies were
+estimated from a random sample containing 5% of the lines in each file.
+
 ```{r ngram_data, cache = TRUE, include = FALSE}
 top10_ngrams <- function(corpus_name, ngram_size, sample_rate) {
     lines <- readLines(corpus_path(corpus_name, lang), encoding = "UTF-8")
@@ -101,7 +120,7 @@ top10_ngrams <- function(corpus_name, ngram_size, sample_rate) {
     ngrams <- data.frame(table(NGramTokenizer(lines, control)))
     names(ngrams) <- c("ngram", "freq")
 
-    top10_ngrams <- ngrams %>% 
+    top10_ngrams <- ngrams %>%
         mutate(freq = 100 * freq / sum(freq)) %>%
         top_n(10, freq)
 
@@ -144,3 +163,11 @@ plot_ngram_data(3)
 ```
 
 ## Conclusions & Outlook
+
+As expected, the documents obtained from news and blogs are longer and have
+a larger number of words than the Twitter documents. The analysis also revealed
+some characteristics of the language used in the documents. For example, the texts
+from blogs and Twitter frequently use personal pronouns -- such as 'I' and 'you' --
+while the news documents use a more impersonal language.  The model for predicting
+the next word in a sequence of words will be based on tables of $n$-gram
+frequencies built from the training documents.
