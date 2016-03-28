@@ -24,34 +24,30 @@ clean_lines <- function(lines) {
     lines <- lines %>%
         stri_split(regex = "[.,;]") %>% unlist %>%
         stri_replace_all(" ", regex = "\\s+") %>%
-        stri_replace("", regex = "^ ") %>%
-        stri_replace("", regex = " $") %>%
+        stri_trim_both %>%
         .[stri_length(.) > 0]
 
     # Transform to lower case.
     stri_trans_tolower(lines)
 }
 
-count_ngrams <- function(lines, max_ngram_size) {
-    control <- Weka_control(min = 1, max = max_ngram_size, delimiters = " ")
-    freq_table <- table(NGramTokenizer(lines, control))
-    freq_table
-}
 
 build_model <- function(lines, max_ngram_size = 1) {
-    model <- lapply(1:max_ngram_size, function(ngram_size) hash())
+    count <- lapply(1:max_ngram_size, function(ngram_size) hash())
 
-    freq_table <- count_ngrams(lines, max_ngram_size)
+    control <- Weka_control(min = 1, max = max_ngram_size, delimiters = " ")
+    freq_table <- table(NGramTokenizer(lines, control))
+
     for (ngram in dimnames(freq_table)[[1]]) {
         ngram_words <- stri_split(ngram, fixed = " ")[[1]]
         valid_ngram <- all(has.key(ngram_words, WORDS))
         if (valid_ngram) {
             ngram_size <- length(ngram_words)
-            model[[ngram_size]][[ngram]] <- freq_table[ngram]
+            count[[ngram_size]][[ngram]] <- freq_table[ngram]
         }
     }
 
-    model
+    list(count = count, total = sapply(count, length))
 }
 
 
@@ -62,4 +58,60 @@ save_model <- function(model, file_path) {
 
 load_model <- function(file_path) {
     readRDS(file_path)
+}
+
+
+ngram_probability <- function(model, next_word, previous_words) {
+    # Conditional probability of observing next_word given previous_words,
+    # calculated using add-one smoothing.
+
+    prefix_size <- min(length(model$count) - 1, length(previous_words))
+    prefix <- character(0)
+    if (prefix_size > 0) {
+        i <- length(previous_words) - prefix_size + 1
+        j <- length(previous_words)
+        prefix <- previous_words[seq(from = i, to = j)]
+    }
+
+    num <- den <- 0
+
+    ngram_words <- c(prefix, next_word)
+    ngram_size <- length(ngram_words)
+    ngram <- paste(ngram_words, collapse = " ")
+    if (has.key(ngram, model$count[[ngram_size]])) {
+        num <- model$count[[ngram_size]][[ngram]]
+    }
+
+    if (length(prefix) > 0) {
+        previous_size <- length(prefix)
+        previous <- paste(prefix, collapse = " ")
+        if (has.key(previous, model$count[[previous_size]])) {
+            den <- model$count[[previous_size]][[previous]]
+        }
+    } else {
+        den <- model$total[1]
+    }
+
+    (num + 1) / (den + length(model$count[[ngram_size]]))
+}
+
+
+predict_next_word <- function(model, text) {
+    # Prepare the input n-gram.
+    lines <- clean_lines(text)
+    text <- lines[length(lines)]
+    text_words <- if (length(text) > 0) stri_split(text, fixed = " ")[[1]] else character(0)
+
+    # Evaluate every next word.
+    selected_probability <- 0
+    selected_word <- NULL
+    for (word in keys(WORDS)) {
+        probability <- ngram_probability(model, word, text_words)
+        if (probability > selected_probability) {
+            selected_probability <- probability
+            selected_word <- word
+        }
+    }
+
+    selected_word
 }
