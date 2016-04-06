@@ -60,8 +60,20 @@ build_model <- function(lines, max_ngram_size = 1, print_every = 10000) {
 }
 
 
+trim_model <- function(model, min_count) {
+    max_ngram_size = length(model$count)
+    count <- rep(list(NULL), max_ngram_size)
+    for (ngram_size in 1:max_ngram_size) {
+        k <- keys(model$count[[ngram_size]])
+        v <- values(model$count[[ngram_size]])
+        count[[ngram_size]] <- hash(k[v >= min_count], v[v >= min_count])
+    }
+    list(count = count, total = sapply(count, length))
+}
+
+
 save_model <- function(model, file_path) {
-    saveRDS(model, file = file_path)
+    saveRDS(model, file = file_path, compress = FALSE)
 }
 
 
