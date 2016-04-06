@@ -6,6 +6,7 @@ if (!file.exists(words_file)) {
     download.file(words_file_url, words_file, method = "curl")
 }
 
+options(java.parameters = "-Xmx6g")
 source("ngram_model.R")
 
 
@@ -16,8 +17,7 @@ corpus_path <- function(name, lang) {
     stopifnot(lang %in% c("de_DE", "en_US", "fi_FI", "ru_RU"))
     lang_dir <- file.path("../data", lang)
     file_name <- paste0(lang, ".", name, ".txt")
-    file_path <- file.path(lang_dir, file_name)
-    file_path
+    file.path(lang_dir, file_name)
 }
 
 for (name in c("blogs", "news", "twitter")) {
@@ -32,17 +32,14 @@ for (name in c("blogs", "news", "twitter")) {
 
 # Build the model.
 
+set.seed(12345)
 lines <- unlist(lapply(
     c("blogs", "news", "twitter"),
-    function(name) readRDS(paste0(name, ".rds"))))
+    function(name) {
+        lines <- readRDS(paste0(name, ".rds"))
+        sample(lines, 0.1 * length(lines))
+    }))
 
-max_ngram_size <- 5
+max_ngram_size <- 4
 model <- build_model(lines, max_ngram_size)
 save_model(model, "model.rds")
-
-cat("The model was built using", format(length(lines), big.mark = ","), "lines.")
-for (ngram_size in 1:max_ngram_size) {
-    cat(sprintf("Number of %d-grams: %s.\n",
-                ngram_size, format(length(model[[ngram_size]]), big.mark = ",")))
-
-}

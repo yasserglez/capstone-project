@@ -5,10 +5,10 @@ library("magrittr")
 library("stringi")
 library("RWeka")
 
-# The model predicts words from the 10,000 most common English words,
+# The model predicts words from the 5,000 most common English words,
 # as determined by n-gram frequency analysis of the Google's Trillion
 # Word Corpus: https://github.com/first20hours/google-10000-english.
-WORDS <- hash(readLines("google-10000-english.txt"), 1:10000)
+WORDS <- hash(readLines("google-10000-english.txt", n = 5000), 1:5000)
 
 read_lines <- function(file_path) {
     readLines(file_path, encoding = "UTF-8", warn = FALSE, skipNul = TRUE)
@@ -32,20 +32,29 @@ clean_lines <- function(lines) {
 }
 
 
-build_model <- function(lines, max_ngram_size = 1) {
+build_model <- function(lines, max_ngram_size = 1, print_every = 10000) {
+    message(sprintf("Processing %d lines...", length(lines)))
+
     count <- lapply(1:max_ngram_size, function(ngram_size) hash())
 
-    control <- Weka_control(min = 1, max = max_ngram_size, delimiters = " ")
-    freq_table <- table(NGramTokenizer(lines, control))
+    for (ngram_size in 1:max_ngram_size) {
+        message(sprintf("Generating %d-ngrams...", ngram_size))
+        control <- Weka_control(min = ngram_size, max = ngram_size, delimiters = " ")
+        freq_table <- as.data.frame(table(NGramTokenizer(lines, control)), stringsAsFactors = FALSE)
+        names(freq_table) <- c("ngram", "freq")
 
-    for (ngram in dimnames(freq_table)[[1]]) {
-        ngram_words <- stri_split(ngram, fixed = " ")[[1]]
-        valid_ngram <- all(has.key(ngram_words, WORDS))
-        if (valid_ngram) {
-            ngram_size <- length(ngram_words)
-            count[[ngram_size]][[ngram]] <- freq_table[ngram]
+        message(sprintf("Processing %d %d-grams...", nrow(freq_table), ngram_size))
+        for (i in seq(from = 1, to = nrow(freq_table))) {
+            ngram <- freq_table$ngram[i]
+            ngram_words <- stri_split(ngram, fixed = " ")[[1]]
+            if (all(has.key(ngram_words, WORDS)))
+                count[[ngram_size]][[ngram]] <- freq_table$freq[i]
+            if (i %% print_every == 0)
+                message(sprintf("Processed %d/%d ngrams...", i, nrow(freq_table)))
         }
     }
+
+    message("Done.")
 
     list(count = count, total = sapply(count, length))
 }
