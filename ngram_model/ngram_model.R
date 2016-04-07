@@ -105,7 +105,7 @@ ngram_probability <- function(model, next_word, previous_words) {
         den <- model$total[1]
     }
 
-    (num + 1) / (den + length(model$count[[ngram_size]]))
+    num / den
 }
 
 
@@ -113,6 +113,7 @@ predict_next_words <- function(model, text, num_words = 1) {
     lines <- clean_lines(text)
     text <- lines[length(lines)]
     text_words <- if (length(text) > 0) stri_split(text, fixed = " ")[[1]] else character(0)
+    text_words <- text_words[has.key(text_words, WORDS)]
 
     next_words <- character(0)
     probabilities <- numeric(0)
