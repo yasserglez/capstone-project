@@ -83,32 +83,24 @@ load_model <- function(file_path) {
 
 
 ngram_probability <- function(model, next_word, previous_words) {
-    # Conditional probability of observing next_word given previous_words,
-    # calculated using add-one smoothing.
-
     prefix_size <- min(length(model$count) - 1, length(previous_words))
-    prefix <- character(0)
+    prefix_words <- character(0)
     if (prefix_size > 0) {
         i <- length(previous_words) - prefix_size + 1
         j <- length(previous_words)
-        prefix <- previous_words[seq(from = i, to = j)]
+        prefix_words <- previous_words[seq(from = i, to = j)]
     }
 
-    num <- den <- 0
-
-    ngram_words <- c(prefix, next_word)
-    ngram_size <- length(ngram_words)
+    ngram_words <- c(prefix_words, next_word)
+    ngram_size <- prefix_size + 1
     ngram <- paste(ngram_words, collapse = " ")
-    if (has.key(ngram, model$count[[ngram_size]])) {
-        num <- model$count[[ngram_size]][[ngram]]
-    }
+    num <- model$count[[ngram_size]][[ngram]]
+    if (is.null(num)) num <- 0
 
-    if (length(prefix) > 0) {
-        previous_size <- length(prefix)
-        previous <- paste(prefix, collapse = " ")
-        if (has.key(previous, model$count[[previous_size]])) {
-            den <- model$count[[previous_size]][[previous]]
-        }
+    if (prefix_size > 0) {
+        prefix <- paste(prefix_words, collapse = " ")
+        den <- model$count[[prefix_size]][[prefix]]
+        if (is.null(den)) den <- 0
     } else {
         den <- model$total[1]
     }
@@ -117,22 +109,23 @@ ngram_probability <- function(model, next_word, previous_words) {
 }
 
 
-predict_next_word <- function(model, text) {
-    # Prepare the input n-gram.
+predict_next_words <- function(model, text, num_words = 1) {
     lines <- clean_lines(text)
     text <- lines[length(lines)]
     text_words <- if (length(text) > 0) stri_split(text, fixed = " ")[[1]] else character(0)
 
-    # Evaluate every next word.
-    selected_probability <- 0
-    selected_word <- NULL
+    next_words <- character(0)
+    probabilities <- numeric(0)
     for (word in keys(WORDS)) {
         probability <- ngram_probability(model, word, text_words)
-        if (probability > selected_probability) {
-            selected_probability <- probability
-            selected_word <- word
+        next_words <- c(next_words, word)
+        probabilities <- c(probabilities, probability)
+        if (length(next_words) > num_words) {
+            ord <- order(probabilities, decreasing = TRUE)[1:num_words]
+            next_words <- next_words[ord]
+            probabilities <- probabilities[ord]
         }
     }
 
-    selected_word
+    next_words
 }
