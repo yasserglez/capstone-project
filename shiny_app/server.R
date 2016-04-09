@@ -9,10 +9,7 @@ close_span <- '</span>'
 
 shinyServer(function(input, output) {
     next_words_div <- reactive({
-        text <- input$text
-        num_words <- input$num_words
-        next_words <- predict_next_words(text, num_words)
-
+        next_words <- predict_next_words(input$text, input$num_words)
         spans <- sapply(next_words, function (word) paste0(open_span, word, close_span))
         paste0(open_div, paste0(spans, collapse = " "), close_div)
     })
