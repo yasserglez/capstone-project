@@ -1,0 +1,43 @@
+Next Word!
+========================================================
+author: Yasser Gonzalez
+date: Data Science Specialization Capstone
+
+Screenshot
+========================================================
+
+<br/>
+
+![Next Word!](screenshot.png)
+
+Instructions
+========================================================
+
+<br/>
+
+1. Type a phrase in the input box
+2. The app will suggest the next word in the phrase
+
+The number of word suggestions controlled using the slider
+
+Algorithm
+========================================================
+
+<br/>
+
+- Predictions based on an n-gram model ($n=1,2,3,4$)
+- Model built using a random sample of phrases from news sources, blogs and Twitter
+- Vocabulary with the 5,000 most common words in the English language
+
+Try it Yourself!
+========================================================
+
+<br/>
+
+### Shiny App
+[https://yasserglez.shinyapps.io/next_word](https://yasserglez.shinyapps.io/next_word)
+
+<div style="height: 0.5em"></div>
+
+### Source Code
+[https://github.com/yasserglez/capstone-project](https://github.com/yasserglez/capstone-project)
